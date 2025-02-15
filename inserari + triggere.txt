@@ -1,0 +1,121 @@
+INSERT INTO users (username, password, email, role) VALUES
+('Martin', '$2y$12$7lUq0KMhkBhihNJ/fuNNlerzN3sTMOp4G9oZSty6eq8FcoXnYcJLe', 'martin.sandro@example.com', 'client'),
+('Sara', '$2y$12$sxz39.zqnWYoFYGTabrdZOYEb931R.0S/Pc9dKyXxsgEEPUK7nk2a', 'sara.brown@example.com', 'client'),
+('Toma_David_Admin', '$2y$12$AAUALnYxW/0qTo2vc1kkZ.jhtmJas842pzbHIRwNbsuBy27BZuT1e', 'tomadavid2004@yahoo.com', 'admin');
+
+
+INSERT INTO hotels (name, location, description, rating) VALUES
+('Hotel Transilvania', 'Cluj-Napoca, Romania', 'Un hotel modern în inima Transilvaniei', 4.1),
+('Hotel Belvedere', 'Brasov, Romania', 'Un hotel luxos cu o istorie bogată.', 4.8),
+('Ara di Marte', 'Rome, Italy', 'Unul din cele male mai recunoscute hoteluri din capitala Italiei.', 4.9);
+
+INSERT INTO rooms (hotel_id, room_type, price, availability) VALUES
+(1, 'single', 250.00, TRUE),
+(1, 'double', 350.00, TRUE),
+(1, 'suite', 550.00, FALSE),
+(2, 'single', 150.00, TRUE),
+(2, 'double', 200.00, TRUE),
+(2, 'suite', 400.00, TRUE),
+(3, 'single', 300.00, TRUE),
+(3, 'double', 450.00, FALSE),
+(3, 'suite', 700.00, TRUE);
+
+
+INSERT INTO reservations (user_id, room_id, check_in, check_out, status) VALUES
+(2, 1, '2025-02-20', '2025-02-22', 'confirmed'),
+(2, 2, '2025-02-23', '2025-02-25', 'pending'),
+(2, 3, '2025-02-26', '2025-02-28', 'confirmed'),
+(3, 4, '2025-02-15', '2025-02-18', 'confirmed'),
+(3, 5, '2025-03-01', '2025-03-05', 'pending'),
+(3, 6, '2025-03-10', '2025-03-12', 'confirmed'),
+(2, 7, '2025-03-20', '2025-03-22', 'confirmed'),
+(2, 8, '2025-04-01', '2025-04-05', 'pending'),
+(3, 9, '2025-04-10', '2025-04-12', 'confirmed');
+
+
+INSERT INTO messages (user_id, subject, message) VALUES
+(1, 'Intrebare despre rezervare', 'Bună, as dori să știu dacă camera este disponibilă pentru o rezervare în noiembrie.'),
+(2, 'Problema la check-in', 'Bună, am avut o problemă la check-in. Cum pot rezolva?'),
+(3, 'Feedback despre servicii', 'Serviciile au fost excelente, dar aș dori să ofer câteva sugestii de îmbunătățire.'),
+(4, 'Anulare rezervare', 'Bună, aș dori să anulez rezervarea pentru camera 3.'),
+(5, 'Cerere ofertă', 'Există vreo ofertă specială pentru sejururi de lungă durată?');
+
+INSERT INTO analytics (user_ip, page) VALUES
+('192.168.1.1', '/index.php'),
+('192.168.1.2', '/rooms.php'),
+('192.168.1.3', '/reservations.php'),
+('192.168.1.4', '/contact.php'),
+('192.168.1.5', '/about.php'),
+('192.168.1.6', '/index.php'),
+('192.168.1.7', '/rooms.php'),
+('192.168.1.8', '/reservations.php'),
+('192.168.1.9', '/contact.php'),
+('192.168.1.10', '/about.php');
+
+
+
+
+
+
+-------------------------------------------------------------------------------
+DELIMITER $$
+
+CREATE TRIGGER check_room_availability
+BEFORE INSERT ON reservations
+FOR EACH ROW
+BEGIN
+    -- Verifică dacă există o rezervare confirmată pe aceeași cameră în perioada dorită
+    IF EXISTS (
+        SELECT 1 
+        FROM reservations
+        WHERE room_id = NEW.room_id
+        AND status = 'confirmed'  -- Verifică doar rezervările confirmate
+        AND (
+            (NEW.check_in BETWEEN check_in AND check_out) 
+            OR (NEW.check_out BETWEEN check_in AND check_out)
+            OR (check_in BETWEEN NEW.check_in AND NEW.check_out)
+            OR (check_out BETWEEN NEW.check_in AND NEW.check_out)
+        )
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'The room is already booked for this period.';
+    END IF;
+END$$
+
+DELIMITER ;
+
+
+------------------------------------------------------------------------
+
+DELIMITER $$
+
+CREATE TRIGGER check_dates_before_insert
+BEFORE INSERT ON reservations
+FOR EACH ROW
+BEGIN
+    -- Verifică dacă data de check-out este mai mare cu cel puțin 1 zi față de check-in
+    IF DATEDIFF(NEW.check_out, NEW.check_in) < 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Check-out date must be at least one day after check-in date';
+    END IF;
+END $$
+
+DELIMITER ;
+
+
+------------------------------------------------------------------------
+
+DELIMITER $$
+
+CREATE TRIGGER before_insert_reservation_date_check
+BEFORE INSERT ON reservations
+FOR EACH ROW
+BEGIN
+    -- Verificăm dacă data de check-in este anterioară datei curente
+    IF NEW.check_in < CURRENT_DATE THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Data de check-in nu poate fi anterioară datei curente.';
+    END IF;
+END$$
+
+DELIMITER ;
+
