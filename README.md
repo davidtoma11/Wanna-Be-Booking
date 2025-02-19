@@ -1,6 +1,4 @@
-# Wanna-Be-Booking
-
-Requirments: 
+# Requirments 
 1. The project will use a MySQL database and will be programmed in PHP. - done
 2. Through the application, deletion, addition, reading operations will be performed on the database. - done
 3. There will be a user login/registration page. - done
