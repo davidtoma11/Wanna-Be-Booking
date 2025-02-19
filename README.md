@@ -10,3 +10,4 @@
 9. Integration of information (not pages, their elements - content parsing) from external sources. - almost done
 10. Session termination. - done
 
+not finished
